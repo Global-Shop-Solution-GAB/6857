@@ -1,0 +1,312 @@
+﻿Program.Sub.ScreenSU.Start
+Gui.Form..Create(BaseForm)
+Gui.Form..Caption("Invoice to Packing List Report")
+Gui.Form..Size(437,671)
+Gui.Form..MinX(0)
+Gui.Form..MinY(0)
+Gui.Form..Position(0,0)
+Gui.Form..AlwaysOnTop(False)
+Gui.Form..FontName("Tahoma")
+Gui.Form..FontSize(8.25)
+Gui.Form..ControlBox(True)
+Gui.Form..MaxButton(True)
+Gui.Form..MinButton(True)
+Gui.Form..MousePointer(0)
+Gui.Form..Moveable(True)
+Gui.Form..Sizeable(True)
+Gui.Form..ShowInTaskBar(True)
+Gui.Form..TitleBar(True)
+Gui.Form..Event(UnLoad,Form_UnLoad)
+Gui.Form.dtpStart.Create(DatePicker)
+Gui.Form.dtpStart.Enabled(True)
+Gui.Form.dtpStart.Visible(True)
+Gui.Form.dtpStart.Zorder(0)
+Gui.Form.dtpStart.Size(100,20)
+Gui.Form.dtpStart.Position(14,29)
+Gui.Form.dtpStart.CheckBox(False)
+Gui.Form.dtpStart.FontName("Tahoma")
+Gui.Form.dtpStart.FontSize(8.25)
+Gui.Form.dtpEnd.Create(DatePicker)
+Gui.Form.dtpEnd.Enabled(True)
+Gui.Form.dtpEnd.Visible(True)
+Gui.Form.dtpEnd.Zorder(0)
+Gui.Form.dtpEnd.Size(100,20)
+Gui.Form.dtpEnd.Position(152,29)
+Gui.Form.dtpEnd.CheckBox(False)
+Gui.Form.dtpEnd.FontName("Tahoma")
+Gui.Form.dtpEnd.FontSize(8.25)
+Gui.Form.lbl1.Create(Label,"Start Date",True,50,13,0,14,14,True,0,"Tahoma",8.25,,0,0)
+Gui.Form.lbl1.BorderStyle(0)
+Gui.Form.lbl2.Create(Label,"End Date",True,44,13,0,152,14,True,0,"Tahoma",8.25,,0,0)
+Gui.Form.lbl2.BorderStyle(0)
+Gui.Form.chkAllPart.Create(CheckBox)
+Gui.Form.chkAllPart.Enabled(True)
+Gui.Form.chkAllPart.Visible(True)
+Gui.Form.chkAllPart.Zorder(0)
+Gui.Form.chkAllPart.Size(75,20)
+Gui.Form.chkAllPart.Position(12,61)
+Gui.Form.chkAllPart.Caption("All Parts")
+Gui.Form.chkAllPart.FontName("Tahoma")
+Gui.Form.chkAllPart.FontSize(8.25)
+Gui.Form.chkAllPart.Value(1)
+Gui.Form.chkAllPart.Event(MouseUp,chkAllPart_MouseUp)
+Gui.Form.cmdBrowse.Create(Button)
+Gui.Form.cmdBrowse.Enabled(False)
+Gui.Form.cmdBrowse.Visible(False)
+Gui.Form.cmdBrowse.Zorder(0)
+Gui.Form.cmdBrowse.Size(93,23)
+Gui.Form.cmdBrowse.Position(83,59)
+Gui.Form.cmdBrowse.Caption("PART BROWSER")
+Gui.Form.cmdBrowse.FontName("Tahoma")
+Gui.Form.cmdBrowse.FontSize(8.25)
+Gui.Form.cmdBrowse.Event(Click,cmdBrowse_Click)
+Gui.Form.GsGcPart.Create(GsGridControl)
+Gui.Form.GsGcPart.Enabled(True)
+Gui.Form.GsGcPart.Visible(True)
+Gui.Form.GsGcPart.Zorder(0)
+Gui.Form.GsGcPart.Size(420,513)
+Gui.Form.GsGcPart.Position(6,92)
+Gui.Form.GsGcPart.Anchor(15)
+Gui.Form.GsGcPart.Event(RowCellClick,GsGcPart_RowCellClick)
+Gui.Form.cmdPrint.Create(Button)
+Gui.Form.cmdPrint.Enabled(True)
+Gui.Form.cmdPrint.Visible(True)
+Gui.Form.cmdPrint.Zorder(0)
+Gui.Form.cmdPrint.Size(75,23)
+Gui.Form.cmdPrint.Position(20,612)
+Gui.Form.cmdPrint.Caption("PRINT")
+Gui.Form.cmdPrint.FontName("Tahoma")
+Gui.Form.cmdPrint.FontSize(8.25)
+Gui.Form.cmdPrint.Anchor(14)
+Gui.Form.cmdPrint.Event(Click,cmdPrint_Click)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+'ARC#6857
+'Customer: G&V Machine Company
+'		Aug 2022, Nam Le
+
+'•	Create a GAB preprocessor with the following characteristics:
+'o	Provide a user interface with a Start Date, End Date, Inventory Browser, Gridview and Ok button
+'	The inventory browser should pull its data from distinct parts from V_ORDER_HIST_LINE
+'	When a part is selected, it will be added to the gridview
+'	There will be a function to delete parts entered in error from the gridview
+'	Clicking OK will send the Start Date, End Date and Part(s) selected to the Crystal Report as parameters
+'	If the gridview is empty, then all parts should be shown
+
+Program.Sub.Main.Start
+f.Intrinsic.Control.Try
+	Function.Intrinsic.UI.UsePixels ' Allows you to use Pixels instead of Twips throughout
+	
+	v.Local.dDateMonthBack.Declare(Date)
+	f.Intrinsic.Date.DateAdd("M", -1, v.Ambient.Date, v.Local.dDateMonthBack)
+	gui.Form.dtpStart.Value(v.Local.dDateMonthBack)
+	
+	
+	f.Intrinsic.Control.CallSub(GetData_Part)
+
+	gui.Form..Visible(True)
+f.Intrinsic.Control.Catch
+	f.Intrinsic.UI.Msgbox(v.Ambient.ErrorDescription)
+f.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+
+'All checkbox
+Program.Sub.chkAllPart_MouseUp.Start
+f.Intrinsic.Control.Try
+	v.Local.bCheck.Declare(Boolean)
+	v.Local.bCheck.Set(v.Screen.Form!chkAllPart.Value)
+	gui.Form.GsGcPart.Visible(False)
+	
+	f.Intrinsic.Control.If(v.Local.bCheck)
+'		gui.Form.cmdBrowse.Enabled(False)
+		f.Data.DataTable.SetValue("dtPartList", -1, "Select", True)
+	f.Intrinsic.Control.Else
+		f.Data.DataTable.SetValue("dtPartList", -1, "Select", False)
+'		gui.Form.cmdBrowse.Enabled(True)
+	f.Intrinsic.Control.EndIf
+	
+	gui.Form.GsGcPart.Visible(True)
+f.Intrinsic.Control.Catch
+	f.Intrinsic.UI.Msgbox(v.Ambient.ErrorDescription)
+f.Intrinsic.Control.EndTry
+Program.Sub.chkAllPart_MouseUp.End
+
+
+'Print
+Program.Sub.cmdPrint_Click.Start
+f.Intrinsic.Control.Try
+	v.Local.bAllPart.Declare(Boolean)
+	V.Local.iBIRunID.Declare(Long)
+	V.Local.iLogID.Declare(Long)
+	v.Local.sReportID.Declare(String)
+	V.Local.sParam.Declare(String)
+	v.Local.sVal.Declare(String)
+	V.Local.iRet.Declare(Long)
+	v.Local.sStartDate.Declare(String)
+	v.Local.sEndDate.Declare(String)
+	v.Local.sListIndex.Declare(String)
+	v.Local.iCount.Declare(Long)
+	v.Local.sListPart.Declare(String)
+	
+	f.Intrinsic.UI.InvokeWaitDialog("Generating Report...")
+	gui.Form..Enabled(False)
+	
+	'report setupW
+	v.Local.bAllPart.Set(v.Screen.Form!chkAllPart.Value)
+'	f.Intrinsic.String.Format(v.Screen.Form!dtpStart.Value, "YYYY-MM-DD", v.Local.sStartDate)
+'	f.Intrinsic.String.Format(v.Screen.Form!dtpEnd.Value, "YYYY-MM-DD", v.Local.sEndDate)
+	
+	
+	
+	f.Intrinsic.String.Format(v.Screen.Form!dtpStart.Value, "MM/DD/YYYY", v.Local.sStartDate)
+'	f.Intrinsic.String.Build("#{0}#",v.Screen.Form!dtpStart.Value,v.Local.sStartDate)
+	f.Intrinsic.String.Format(v.Screen.Form!dtpEnd.Value, "MM/DD/YYYY", v.Local.sEndDate)
+'	f.Intrinsic.String.Build("#{0}#",v.Screen.Form!dtpEnd.Value,v.Local.sEndDate)
+	
+	
+	
+	f.Global.BI.GetIDFromName("Invoice_PackingList_XRef_MOD6857.rpt", v.Local.sReportID)
+'	f.Global.BI.GetIDFromName("Invoice_PackingList_XRef_DEV.rpt", v.Local.sReportID)
+
+	F.Global.BI.GetRunID(V.Local.iBIRunID)
+	F.Global.BI.StartLogging(V.Local.iBIRunID,v.Local.sReportID,0,"",V.Local.iLogID)
+	f.Global.BI.StopLogging(v.Local.iLogID)
+	
+'	V.Local.sParam.Set("Start Date*!*End Date*!*Part List")
+	V.Local.sParam.Set("Start_Date*!*End_Date*!*Part_List")
+'	V.Local.sParam.Set("DATE_START*!*DATE_END*!*Part_List")
+	
+'	if check all => use all 
+'		else get selected rows
+	f.Intrinsic.Control.If(v.Local.bAllPart)
+	
+'		F.Intrinsic.String.Build("{0}*!*{1}*!*ALL",v.Local.sStartDate, v.Local.sEndDate, V.Local.sVal)
+		F.Intrinsic.String.Build("{0}*!*{1}*!*ALL",v.Local.sStartDate, v.Local.sEndDate, V.Local.sVal)
+		
+	f.Intrinsic.Control.Else
+		v.Local.sListIndex.Set("***NORETURN***")
+		f.Data.DataTable.Select("dtPartList", "SELECT=1", v.Local.sListIndex)
+		
+		'get list parts
+		f.Intrinsic.Control.If(v.Local.sListIndex,!=,"***NORETURN***")
+			f.Intrinsic.String.Split(v.Local.sListIndex,"*!*", v.Local.sListIndex)
+			f.Intrinsic.Control.For(v.Local.iCount,0,v.Local.sListIndex.UBound,1)
+				f.Intrinsic.Control.If(v.Local.iCount,=,0)
+					v.Local.sListPart.Set(v.DataTable.dtPartList(v.Local.sListIndex(v.Local.iCount)).PART!FieldValTrim)
+				f.Intrinsic.Control.Else
+					f.Intrinsic.String.Build("{0},{1}", v.Local.sListPart, v.DataTable.dtPartList(v.Local.sListIndex(v.Local.iCount)).PART!FieldValTrim, v.Local.sListPart)
+				f.Intrinsic.Control.EndIf
+			f.Intrinsic.Control.Next(v.Local.iCount)
+			
+			F.Intrinsic.String.Build("{0}*!*{1}*!*{2}",v.Local.sStartDate, v.Local.sEndDate, v.Local.sListPart, V.Local.sVal)
+			
+		'if none, show all
+		f.Intrinsic.Control.Else
+			F.Intrinsic.String.Build("{0}*!*{1}*!*ALL",v.Local.sStartDate, v.Local.sEndDate, V.Local.sVal)
+		f.Intrinsic.Control.EndIf
+		
+	f.Intrinsic.Control.EndIf
+
+	
+'	f.Intrinsic.String.Split(v.Local.sParam, "*!*", v.Local.sParam)
+'	f.Intrinsic.String.Split(v.Local.sVal, "*!*", v.Local.sVal)
+	F.Global.BI.RunReportPreProcessor(V.Local.iBIRunID,V.Local.iLogID,V.Local.sParam,V.Local.sVal,"",-1,True,"",-1,"",-1,"","",V.Local.iBIRunID)
+'	f.Global.BI.PrintReport(v.Local.sReportID, 0, v.Local.sParam, v.Local.sVal, -1, False)
+	
+	f.Intrinsic.UI.CloseWaitDialog
+	
+	f.Intrinsic.Control.CallSub(Form_UnLoad)
+	
+f.Intrinsic.Control.Catch
+	f.Intrinsic.UI.Msgbox(v.Ambient.ErrorDescription)
+f.Intrinsic.Control.EndTry
+Program.Sub.cmdPrint_Click.End
+
+'Get Part
+Program.Sub.GetData_Part.Start
+f.Intrinsic.Control.Try
+	f.Intrinsic.Control.If(v.DataTable.dtPartList.Exists)
+		f.Data.DataTable.Close("dtPartList")
+	f.Intrinsic.Control.EndIf
+	
+	f.ODBC.Connection!Con.OpenCompanyConnection
+		f.Data.DataTable.CreateFromSQL("dtPartList", "Con", "select distinct RTRIM(PART) PART, RTRIM(DESCRIPTION) DESCRIPTION from V_ORDER_HIST_LINE order by PART", True)
+	f.ODBC.Connection!Con.Close
+	
+	f.Data.DataTable.AddColumn("dtPartList", "SELECT", "Boolean", True)
+	
+	gui.Form.GsGcPart.AddGridviewFromDatatable("gvPart", "dtPartList")
+	
+	gui.Form.GsGcPart.SetGridviewProperty("gvPart", v.Enum.GridViewPropertyNames!Editable,False)
+	gui.Form.GsGcPart.SetGridviewProperty("gvPart", v.Enum.GridViewPropertyNames!ReadOnly,True)
+	gui.Form.GsGcPart.SetGridviewProperty("gvPart", v.Enum.GridViewPropertyNames!EnableAppearanceOddRow,True)
+	gui.Form.GsGcPart.SetGridviewProperty("gvPart", v.Enum.GridViewPropertyNames!ShowAutoFilterRow,True)
+	
+	gui.Form.GsGcPart.SetColumnProperty("gvPart","SELECT" ,v.Enum.ColumnPropertyNames!HeaderFontBold, True)
+	gui.Form.GsGcPart.SetColumnProperty("gvPart","PART" ,v.Enum.ColumnPropertyNames!HeaderFontBold, True)
+	gui.Form.GsGcPart.SetColumnProperty("gvPart","DESCRIPTION" ,v.Enum.ColumnPropertyNames!HeaderFontBold, True)
+	
+		gui.Form.GsGcPart.SetColumnProperty("gvPart","SELECT" ,v.Enum.ColumnPropertyNames!HeaderHAlignment, "Center")
+	gui.Form.GsGcPart.SetColumnProperty("gvPart","PART" ,v.Enum.ColumnPropertyNames!HeaderHAlignment, "Center")
+	gui.Form.GsGcPart.SetColumnProperty("gvPart","DESCRIPTION" ,v.Enum.ColumnPropertyNames!HeaderHAlignment, "Center")
+	
+	gui.Form.GsGcPart.SetColumnProperty("gvPart","SELECT" ,v.Enum.ColumnPropertyNames!MinWidth, 40)
+	gui.Form.GsGcPart.SetColumnProperty("gvPart","PART" ,v.Enum.ColumnPropertyNames!MinWidth, 100)
+	gui.Form.GsGcPart.SetColumnProperty("gvPart","DESCRIPTION" ,v.Enum.ColumnPropertyNames!MinWidth, 200)
+	
+	gui.Form.GsGcPart.SetColumnProperty("gvPart","SELECT" ,v.Enum.ColumnPropertyNames!VisibleIndex, 0)
+	gui.Form.GsGcPart.SetColumnProperty("gvPart","PART" ,v.Enum.ColumnPropertyNames!VisibleIndex, 1)
+	gui.Form.GsGcPart.SetColumnProperty("gvPart","DESCRIPTION" ,v.Enum.ColumnPropertyNames!VisibleIndex, 2)
+	
+	gui.Form.GsGcPart.MainView("gvPart")
+f.Intrinsic.Control.Catch
+	f.Intrinsic.UI.Msgbox(v.Ambient.ErrorDescription)
+f.Intrinsic.Control.EndTry
+Program.Sub.GetData_Part.End
+
+
+'Browse
+Program.Sub.cmdBrowse_Click.Start
+f.Intrinsic.Control.Try
+	f.Intrinsic.Control.If(v.DataTable.dtPartList.Exists,=,False)
+
+	f.Intrinsic.Control.Else
+	f.Intrinsic.Control.EndIf
+	
+f.Intrinsic.Control.Catch
+	f.Intrinsic.UI.Msgbox(v.Ambient.ErrorDescription)
+f.Intrinsic.Control.EndTry
+Program.Sub.cmdBrowse_Click.End
+
+Program.Sub.Form_UnLoad.Start
+f.Intrinsic.Control.end
+Program.Sub.Form_UnLoad.End
+
+'select/unselect
+Program.Sub.GsGcPart_RowCellClick.Start
+f.Intrinsic.Control.Try
+	v.Local.bSelect.Declare(Boolean)
+	
+	f.Intrinsic.Control.SelectCase(v.Args.Column)
+		f.Intrinsic.Control.case("SELECT")
+			v.Local.bSelect.Set(v.DataTable.dtPartList(v.Args.RowIndex).SELECT!FieldVal)
+			f.Intrinsic.Control.If(v.Local.bSelect)
+				f.Data.DataTable.SetValue("dtPartList", v.Args.RowIndex, "SELECT", False)
+			f.Intrinsic.Control.Else
+				f.Data.DataTable.SetValue("dtPartList", v.Args.RowIndex, "SELECT", True)
+			f.Intrinsic.Control.EndIf
+	f.Intrinsic.Control.EndSelect
+	
+f.Intrinsic.Control.Catch
+	f.Intrinsic.UI.Msgbox(v.Ambient.ErrorDescription)
+f.Intrinsic.Control.EndTry
+Program.Sub.GsGcPart_RowCellClick.End
+
+Program.Sub.Comments.Start
+${$5$}$3.0.0.0$}$1
+${$6$}$nle$}$20220808165042863$}$kjzCRYkA6UEoRnCwndYnRXTQH0i7KUgm5ak5OwdvgVTMfzpGN5OdfZbMU+ZeTJu+
+Program.Sub.Comments.End
